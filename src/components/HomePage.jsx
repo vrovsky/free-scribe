@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, use } from "react";
 
 export default function HomePage(props) {
   const { setFile, setAudioStream } = props;
@@ -26,19 +26,25 @@ export default function HomePage(props) {
     }
     setRacordingStatus("recording");
 
-    //create new media recorder instanse using the stream
+    if (!tempStream) {
+      console.error("Failed to get user media");
+      return;
+    }
+    console.log(tempStream);
+
     const media = new MediaRecorder(tempStream, {
       type: mimeType,
     });
 
     mediaRecorder.current = media;
     mediaRecorder.current.start();
-    let localAudioChunk = [];
+    const localAudioChunk = [];
     mediaRecorder.current.ondataavailable = (event) => {
       if (typeof event.data === "undefined") return;
       if (event.data.size === 0) return;
       localAudioChunk.push(event.data);
     };
+
     setAudioChunks(localAudioChunk);
   }
 
@@ -53,11 +59,23 @@ export default function HomePage(props) {
       });
       setAudioStream(audioBlob);
       setAudioChunks([]);
+      setDuration(0);
     };
   }
 
+  useEffect(() => {
+    if (recordingStatus === "inactive") return;
+    const interval = setInterval(() => {
+      setDuration((curr) => curr + 1);
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <main className="flex-1 p-4 flex flex-col text-center gap-3 sm:gap-4 md:gap-5 justify-center pb-20">
+    <main className="flex-1 p-4 flex flex-col text-center gap-3 sm:gap-4 justify-center pb-20">
       <h1 className="font-semibold text-5xl sm:text-6xl md:text-7xl">
         Free<span className="text-blue-400 bold font-semibold">Scribe</span>
       </h1>
@@ -65,9 +83,24 @@ export default function HomePage(props) {
         Record <span className="text-blue-400">&rarr;</span>Transcribe{" "}
         <span className="text-blue-400">&rarr;</span>Translate
       </h3>
-      <button className="flex specialBtn px-4 py-2 rounded-xl items-center text-base justify-between gap-4 mx-auto w-72 max-w-full my-4">
-        <p className="text-blue-400">Record</p>
-        <i className="fa-solid fa-microphone"></i>
+      <button
+        onClick={
+          recordingStatus === "recording" ? stopRecording : startRecording
+        }
+        className="flex specialBtn px-4 py-2 rounded-xl items-center text-base justify-between gap-4 mx-auto w-72 max-w-full my-4"
+      >
+        <p className="text-blue-400">
+          {recordingStatus === "inactive" ? "Record" : "Stop Recording"}
+        </p>
+        <div className="flex items-center gap-2">
+          {!duration === 0 && <p className="text-sm">{duration}s</p>}
+          <i
+            className={
+              "fa-solid duration-200 fa-microphone" +
+              (recordingStatus === "recording" ? "text-rose-300" : "")
+            }
+          ></i>
+        </div>
       </button>
       <p className="text-base">
         Or{" "}
