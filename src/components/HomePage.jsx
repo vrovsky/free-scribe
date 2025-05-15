@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, use } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export default function HomePage(props) {
   const { setFile, setAudioStream } = props;
@@ -15,7 +15,7 @@ export default function HomePage(props) {
 
     console.log("Start recording...");
     try {
-      const streamData = navigator.mediaDevices.getUserMedia({
+      const streamData = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: false,
       });
@@ -64,15 +64,18 @@ export default function HomePage(props) {
   }
 
   useEffect(() => {
+    let intervalId;
+
     if (recordingStatus === "inactive") return;
-    const interval = setInterval(() => {
+
+    intervalId = setInterval(() => {
       setDuration((curr) => curr + 1);
     }, 1000);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(intervalId);
     };
-  }, []);
+  }, [recordingStatus]);
 
   return (
     <main className="flex-1 p-4 flex flex-col text-center gap-3 sm:gap-4 justify-center pb-20">
@@ -93,10 +96,10 @@ export default function HomePage(props) {
           {recordingStatus === "inactive" ? "Record" : "Stop Recording"}
         </p>
         <div className="flex items-center gap-2">
-          {!duration === 0 && <p className="text-sm">{duration}s</p>}
+          {duration !== 0 && <p className="text-sm ">{duration}s</p>}
           <i
             className={
-              "fa-solid duration-200 fa-microphone" +
+              "fa-solid duration-200 fa-microphone " +
               (recordingStatus === "recording" ? "text-rose-300" : "")
             }
           ></i>
