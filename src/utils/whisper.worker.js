@@ -31,6 +31,12 @@ async function transcribe(audio) {
     pipeline = await MyTranscriptionPipeline.getInstance(load_model_callback);
   } catch (err) {
     console.log(err.message);
+    return;
+  }
+
+  if (!pipeline) {
+    console.log("Pipeline is undefined");
+    return;
   }
 
   sendLoadingMessage("success");
@@ -114,14 +120,11 @@ class GenerationTracker {
 
   chunkCallback(data) {
     this.chunks.push(data);
-    const [text, { chunks }] = this.pipeline.tokenizer._decode_asr(
-      this.chunks,
-      {
-        time_precision: this.time_precision,
-        return_timestamps: true,
-        force_full_sequence: false,
-      }
-    );
+    const [{ chunks }] = this.pipeline.tokenizer._decode_asr(this.chunks, {
+      time_precision: this.time_precision,
+      return_timestamps: true,
+      force_full_sequence: false,
+    });
 
     this.processed_chunks = chunks.map((chunk, index) => {
       return this.processChunk(chunk, index);
