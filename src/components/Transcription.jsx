@@ -1,5 +1,5 @@
-import React from "react";
+export default function Transcription(props) {
+  const { textElement } = props;
 
-export default function Transcription() {
-  return <div>Transcription</div>;
+  return <div>{textElement}</div>;
 }
