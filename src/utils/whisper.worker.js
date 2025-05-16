@@ -17,6 +17,10 @@ class MyTranscriptionPipeline {
 
 self.addEventListener("message", async (event) => {
   const { type, audio } = event.data;
+
+  //THIS WILL BREAK ON PRODUCTION BTW CHANGE TO THE ACTUAL URL, THIS FIXES THE ORIGIN ERROR
+  //   if (event.origin !== "http://localhost:5173") return
+
   if (type === MessageTypes.INFERENCE_REQUEST) {
     await transcribe(audio);
   }
@@ -31,12 +35,6 @@ async function transcribe(audio) {
     pipeline = await MyTranscriptionPipeline.getInstance(load_model_callback);
   } catch (err) {
     console.log(err.message);
-    return;
-  }
-
-  if (!pipeline) {
-    console.log("Pipeline is undefined");
-    return;
   }
 
   sendLoadingMessage("success");
@@ -83,6 +81,13 @@ async function sendDownloadingMessage(file, progress, loaded, total) {
 }
 
 class GenerationTracker {
+  pipeline;
+  stride_length_s;
+  chunks;
+  time_precision;
+  processed_chunks;
+  callbackFunctionCounter;
+
   constructor(pipeline, stride_length_s) {
     this.pipeline = pipeline;
     this.stride_length_s = stride_length_s;
@@ -93,7 +98,6 @@ class GenerationTracker {
     this.processed_chunks = [];
     this.callbackFunctionCounter = 0;
   }
-
   sendFinalResult() {
     self.postMessage({ type: MessageTypes.INFERENCE_DONE });
   }
@@ -120,11 +124,14 @@ class GenerationTracker {
 
   chunkCallback(data) {
     this.chunks.push(data);
-    const [{ chunks }] = this.pipeline.tokenizer._decode_asr(this.chunks, {
-      time_precision: this.time_precision,
-      return_timestamps: true,
-      force_full_sequence: false,
-    });
+    const [_text, { chunks }] = this.pipeline.tokenizer._decode_asr(
+      this.chunks,
+      {
+        time_precision: this.time_precision,
+        return_timestamps: true,
+        force_full_sequence: false,
+      }
+    );
 
     this.processed_chunks = chunks.map((chunk, index) => {
       return this.processChunk(chunk, index);
