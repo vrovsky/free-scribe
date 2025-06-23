@@ -28,7 +28,7 @@ self.addEventListener("message", async (event) => {
   }
 });
 
-async function transcribe(audio, language) {
+async function transcribe(audio, language = "en") {
   sendLoadingMessage("loading");
   console.log("language", language);
 
