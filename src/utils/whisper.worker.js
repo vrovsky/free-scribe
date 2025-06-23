@@ -17,10 +17,6 @@ class MyTranscriptionPipeline {
 
 self.addEventListener("message", async (event) => {
   const { type, audio } = event.data;
-
-  //THIS WILL BREAK ON PRODUCTION BTW CHANGE TO THE ACTUAL URL, THIS FIXES THE ORIGIN ERROR
-  //   if (event.origin !== "http://localhost:5173") return
-
   if (type === MessageTypes.INFERENCE_REQUEST) {
     await transcribe(audio);
   }
@@ -29,10 +25,28 @@ self.addEventListener("message", async (event) => {
 async function transcribe(audio) {
   sendLoadingMessage("loading");
 
-  let pipeline;
+  let transcriber;
 
   try {
-    pipeline = await MyTranscriptionPipeline.getInstance(load_model_callback);
+    transcriber = await MyTranscriptionPipeline.getInstance(
+      load_model_callback
+    );
+  } catch (err) {
+    console.error("Initialization error:", err);
+    sendLoadingMessage("error");
+    return;
+  }
+
+  if (!transcriber) {
+    console.error("transcriber is undefined!");
+    sendLoadingMessage("error");
+    return;
+  }
+
+  try {
+    transcriber = await MyTranscriptionPipeline.getInstance(
+      load_model_callback
+    );
   } catch (err) {
     console.log(err.message);
   }
@@ -41,8 +55,8 @@ async function transcribe(audio) {
 
   const stride_length_s = 5;
 
-  const generationTracker = new GenerationTracker(pipeline, stride_length_s);
-  await pipeline(audio, {
+  const generationTracker = new GenerationTracker(transcriber, stride_length_s);
+  await transcriber.__call__(audio, {
     top_k: 0,
     do_sample: false,
     chunk_length: 30,
@@ -92,9 +106,7 @@ class GenerationTracker {
     this.pipeline = pipeline;
     this.stride_length_s = stride_length_s;
     this.chunks = [];
-    this.time_precision =
-      pipeline?.processor.feature_extractor.config.chunk_length /
-      pipeline.model.config.max_source_positions;
+    this.time_precision = 0.01;
     this.processed_chunks = [];
     this.callbackFunctionCounter = 0;
   }
