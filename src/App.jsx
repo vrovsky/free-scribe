@@ -82,7 +82,7 @@ function App() {
       type: MessageTypes.INFERENCE_REQUEST,
       audio,
       // !!!!!! Possible need to comment "model_name"
-      model_name,
+      // model_name,
       language,
     });
   }
