@@ -13,6 +13,7 @@ function App() {
   const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [language, setLanguage] = useState("en");
 
   const isAudioAvailable = file || audioStream;
 
@@ -80,7 +81,9 @@ function App() {
     worker.current.postMessage({
       type: MessageTypes.INFERENCE_REQUEST,
       audio,
+      // !!!!!! Possible need to comment "model_name"
       model_name,
+      language,
     });
   }
 
@@ -100,7 +103,12 @@ function App() {
             audioStream={audioStream}
           />
         ) : (
-          <HomePage setFile={setFile} setAudioStream={setAudioStream} />
+          <HomePage
+            setFile={setFile}
+            setAudioStream={setAudioStream}
+            language={language}
+            setLanguage={setLanguage}
+          />
         )}
       </section>
       <footer></footer>

@@ -18,7 +18,6 @@ self.addEventListener("message", async (event) => {
   let translator = await MyTranslationPipeline.getInstance((x) => {
     self.postMessage(x);
   });
-  console.log(event.data);
   let output = await translator(event.data.text, {
     tgt_lang: event.data.tgt_lang,
     src_lang: event.data.src_lang,
@@ -32,8 +31,6 @@ self.addEventListener("message", async (event) => {
       });
     },
   });
-
-  console.log("HEHEHHERERE", output);
 
   self.postMessage({
     status: "complete",

@@ -3,12 +3,18 @@ import { MessageTypes } from "./presets";
 
 class MyTranscriptionPipeline {
   static task = "automatic-speech-recognition";
-  static model = "openai/whisper-tiny.en";
+  static model = null;
   static instance = null;
 
-  static async getInstance(progress_callback = null) {
-    if (this.instance === null) {
-      this.instance = await pipeline(this.task, null, { progress_callback });
+  static async getInstance(language = "en", progress_callback = null) {
+    const selectedModel =
+      language === "en" ? "openai/whisper-tiny.en" : "openai/whisper-tiny";
+
+    if (this.instance === null || this.model !== selectedModel) {
+      this.model = selectedModel;
+      this.instance = await pipeline(this.task, this.model, {
+        progress_callback,
+      });
     }
 
     return this.instance;
@@ -16,19 +22,23 @@ class MyTranscriptionPipeline {
 }
 
 self.addEventListener("message", async (event) => {
-  const { type, audio } = event.data;
+  const { type, audio, language = "en" } = event.data;
   if (type === MessageTypes.INFERENCE_REQUEST) {
-    await transcribe(audio);
+    await transcribe(audio, language);
   }
 });
 
-async function transcribe(audio) {
+async function transcribe(audio, language) {
   sendLoadingMessage("loading");
+  console.log("language", language);
 
   let pipeline;
 
   try {
-    pipeline = await MyTranscriptionPipeline.getInstance(load_model_callback);
+    pipeline = await MyTranscriptionPipeline.getInstance(
+      language,
+      load_model_callback
+    );
   } catch (err) {
     console.log(err.message);
   }

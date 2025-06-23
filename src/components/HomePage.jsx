@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 
 export default function HomePage(props) {
-  const { setAudioStream, setFile } = props;
+  const { setAudioStream, setFile, language, setLanguage } = props;
 
   const [recordingStatus, setRecordingStatus] = useState("inactive");
   const [audioChunks, setAudioChunks] = useState([]);
   const [duration, setDuration] = useState(0);
+
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const mediaRecorder = useRef(null);
 
@@ -83,7 +85,7 @@ export default function HomePage(props) {
         onClick={
           recordingStatus === "recording" ? stopRecording : startRecording
         }
-        className="flex specialBtn px-4 py-2 rounded-xl items-center text-base justify-between gap-4 mx-auto w-72 max-w-full my-4"
+        className="hover:scale-105 hover:shadow-xs transition-all duration-600 flex specialBtn px-4 py-2 rounded-xl items-center text-base justify-between gap-4 mx-auto w-72 max-w-full my-4"
       >
         <p className="text-blue-400">
           {recordingStatus === "inactive" ? "Record" : `Stop recording`}
@@ -93,7 +95,9 @@ export default function HomePage(props) {
           <i
             className={
               "fa-solid duration-200 fa-microphone " +
-              (recordingStatus === "recording" ? " text-rose-300" : "")
+              (recordingStatus === "recording"
+                ? " text-rose-300 animate-pulse-recording"
+                : "")
             }
           ></i>
         </div>
@@ -114,7 +118,45 @@ export default function HomePage(props) {
         </label>{" "}
         a mp3 file
       </p>
-      <p className="italic text-slate-400">Free now free forever</p>
+      <div className="flex justify-center">
+        <div className="relative inline-block text-left">
+          <button
+            onClick={() => setShowDropdown((prev) => !prev)}
+            className="italic text-slate-400 flex items-center gap-2 hover:text-slate-600 transition"
+          >
+            <i className="fa-solid fa-gear duration-200"></i>
+            transcription language:{" "}
+            <span className="font-medium text-slate-500">
+              {language === "en" ? "English" : "Русский"}
+            </span>
+          </button>
+
+          {showDropdown && (
+            <div className="absolute z-10 mt-2 w-44 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setLanguage("en");
+                    setShowDropdown(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  🇬🇧 English
+                </button>
+                <button
+                  onClick={() => {
+                    setLanguage("ru");
+                    setShowDropdown(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  🇷🇺 Русский
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
