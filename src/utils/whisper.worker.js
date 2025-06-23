@@ -25,28 +25,10 @@ self.addEventListener("message", async (event) => {
 async function transcribe(audio) {
   sendLoadingMessage("loading");
 
-  let transcriber;
+  let pipeline;
 
   try {
-    transcriber = await MyTranscriptionPipeline.getInstance(
-      load_model_callback
-    );
-  } catch (err) {
-    console.error("Initialization error:", err);
-    sendLoadingMessage("error");
-    return;
-  }
-
-  if (!transcriber) {
-    console.error("transcriber is undefined!");
-    sendLoadingMessage("error");
-    return;
-  }
-
-  try {
-    transcriber = await MyTranscriptionPipeline.getInstance(
-      load_model_callback
-    );
+    pipeline = await MyTranscriptionPipeline.getInstance(load_model_callback);
   } catch (err) {
     console.log(err.message);
   }
@@ -55,8 +37,8 @@ async function transcribe(audio) {
 
   const stride_length_s = 5;
 
-  const generationTracker = new GenerationTracker(transcriber, stride_length_s);
-  await transcriber.__call__(audio, {
+  const generationTracker = new GenerationTracker(pipeline, stride_length_s);
+  await pipeline(audio, {
     top_k: 0,
     do_sample: false,
     chunk_length: 30,
@@ -95,13 +77,6 @@ async function sendDownloadingMessage(file, progress, loaded, total) {
 }
 
 class GenerationTracker {
-  pipeline;
-  stride_length_s;
-  chunks;
-  time_precision;
-  processed_chunks;
-  callbackFunctionCounter;
-
   constructor(pipeline, stride_length_s) {
     this.pipeline = pipeline;
     this.stride_length_s = stride_length_s;
@@ -110,6 +85,7 @@ class GenerationTracker {
     this.processed_chunks = [];
     this.callbackFunctionCounter = 0;
   }
+
   sendFinalResult() {
     self.postMessage({ type: MessageTypes.INFERENCE_DONE });
   }
@@ -136,7 +112,7 @@ class GenerationTracker {
 
   chunkCallback(data) {
     this.chunks.push(data);
-    const [_text, { chunks }] = this.pipeline.tokenizer._decode_asr(
+    const [text, { chunks }] = this.pipeline.tokenizer._decode_asr(
       this.chunks,
       {
         time_precision: this.time_precision,
