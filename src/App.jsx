@@ -58,6 +58,13 @@ function App() {
           setLoading(false);
           console.log("TRANSCRIPTION DONE");
           break;
+        case MessageTypes.ERROR:
+          console.error("Worker error:", e.data.error);
+          setLoading(false);
+          setDownloading(false);
+          // might show this error to the user
+          alert(`Transcription error: ${e.data.error}`);
+          break;
       }
     };
 
@@ -96,7 +103,7 @@ function App() {
       worker.current.postMessage({
         type: MessageTypes.INFERENCE_REQUEST,
         audio,
-        language,
+        language, // This is the key - passing the language
       });
     } catch (error) {
       console.error("Error processing audio:", error);

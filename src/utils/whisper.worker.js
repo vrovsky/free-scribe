@@ -8,14 +8,22 @@ class MyTranscriptionPipeline {
 
   static async getInstance(language = "en", progress_callback = null) {
     const selectedModel =
-      language === "en" ? "openai/whisper-tiny.en" : "openai/whisper-tiny";
+      language === "en" ? "Xenova/whisper-tiny.en" : "Xenova/whisper-tiny";
 
-    // Force reload if model changed
     if (this.instance === null || this.model !== selectedModel) {
       this.model = selectedModel;
-      this.instance = await pipeline(this.task, this.model, {
-        progress_callback,
-      });
+      console.log(`Loading model: ${selectedModel}`);
+
+      try {
+        this.instance = await pipeline(this.task, this.model, {
+          progress_callback,
+          dtype: "fp32",
+        });
+        console.log(`Model ${selectedModel} loaded successfully`);
+      } catch (error) {
+        console.error(`Failed to load model ${selectedModel}:`, error);
+        throw error;
+      }
     }
 
     return this.instance;
@@ -33,15 +41,19 @@ async function transcribe(audio, language = "en") {
   sendLoadingMessage("loading");
   console.log("Transcribing with language:", language);
 
-  let pipeline;
+  let transcriptionPipeline;
 
   try {
-    pipeline = await MyTranscriptionPipeline.getInstance(
+    transcriptionPipeline = await MyTranscriptionPipeline.getInstance(
       language,
       load_model_callback
     );
   } catch (err) {
-    console.log("Pipeline error:", err.message);
+    console.error("Pipeline error:", err.message);
+    self.postMessage({
+      type: MessageTypes.ERROR,
+      error: `Failed to load transcription model: ${err.message}`,
+    });
     return;
   }
 
@@ -49,25 +61,38 @@ async function transcribe(audio, language = "en") {
 
   const stride_length_s = 5;
 
-  const generationTracker = new GenerationTracker(pipeline, stride_length_s);
+  try {
+    const generationTracker = new GenerationTracker(
+      transcriptionPipeline,
+      stride_length_s
+    );
 
-  const pipelineOptions = {
-    top_k: 0,
-    do_sample: false,
-    chunk_length: 30,
-    stride_length_s,
-    return_timestamps: true,
-    callback_function:
-      generationTracker.callbackFunction.bind(generationTracker),
-    chunk_callback: generationTracker.chunkCallback.bind(generationTracker),
-  };
+    const pipelineOptions = {
+      top_k: 0,
+      do_sample: false,
+      chunk_length: 30,
+      stride_length_s,
+      return_timestamps: true,
+      callback_function:
+        generationTracker.callbackFunction.bind(generationTracker),
+      chunk_callback: generationTracker.chunkCallback.bind(generationTracker),
+    };
 
-  if (language !== "en") {
-    pipelineOptions.language = language;
+    if (language === "ru") {
+      pipelineOptions.language = "russian";
+      pipelineOptions.forced_decoder_ids = null;
+    }
+
+    console.log("Starting transcription with options:", pipelineOptions);
+    await transcriptionPipeline(audio, pipelineOptions);
+    generationTracker.sendFinalResult();
+  } catch (error) {
+    console.error("Transcription error:", error);
+    self.postMessage({
+      type: MessageTypes.ERROR,
+      error: `Transcription failed: ${error.message}`,
+    });
   }
-
-  await pipeline(audio, pipelineOptions);
-  generationTracker.sendFinalResult();
 }
 
 async function load_model_callback(data) {
