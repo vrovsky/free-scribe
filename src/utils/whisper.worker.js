@@ -10,6 +10,7 @@ class MyTranscriptionPipeline {
     const selectedModel =
       language === "en" ? "openai/whisper-tiny.en" : "openai/whisper-tiny";
 
+    // Force reload if model changed
     if (this.instance === null || this.model !== selectedModel) {
       this.model = selectedModel;
       this.instance = await pipeline(this.task, this.model, {
@@ -30,7 +31,7 @@ self.addEventListener("message", async (event) => {
 
 async function transcribe(audio, language = "en") {
   sendLoadingMessage("loading");
-  console.log("language", language);
+  console.log("Transcribing with language:", language);
 
   let pipeline;
 
@@ -40,7 +41,8 @@ async function transcribe(audio, language = "en") {
       load_model_callback
     );
   } catch (err) {
-    console.log(err.message);
+    console.log("Pipeline error:", err.message);
+    return;
   }
 
   sendLoadingMessage("success");
@@ -48,7 +50,8 @@ async function transcribe(audio, language = "en") {
   const stride_length_s = 5;
 
   const generationTracker = new GenerationTracker(pipeline, stride_length_s);
-  await pipeline(audio, {
+
+  const pipelineOptions = {
     top_k: 0,
     do_sample: false,
     chunk_length: 30,
@@ -57,7 +60,13 @@ async function transcribe(audio, language = "en") {
     callback_function:
       generationTracker.callbackFunction.bind(generationTracker),
     chunk_callback: generationTracker.chunkCallback.bind(generationTracker),
-  });
+  };
+
+  if (language !== "en") {
+    pipelineOptions.language = language;
+  }
+
+  await pipeline(audio, pipelineOptions);
   generationTracker.sendFinalResult();
 }
 
@@ -146,6 +155,7 @@ class GenerationTracker {
     if (this.processed_chunks.length === 0) {
       return 0;
     }
+    return this.processed_chunks[this.processed_chunks.length - 1].end || 0;
   }
 
   processChunk(chunk, index) {

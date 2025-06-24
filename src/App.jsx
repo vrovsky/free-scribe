@@ -20,6 +20,10 @@ function App() {
   function handleAudioReset() {
     setFile(null);
     setAudioStream(null);
+    setOutput(null);
+    setFinished(false);
+    setLoading(false);
+    setDownloading(false);
   }
 
   const worker = useRef(null);
@@ -36,30 +40,35 @@ function App() {
 
     const onMessageReceived = async (e) => {
       switch (e.data.type) {
-        case "DOWNLOADING":
+        case MessageTypes.DOWNLOADING:
           setDownloading(true);
           console.log("DOWNLOADING");
           break;
-        case "LOADING":
+        case MessageTypes.LOADING:
           setLoading(true);
+          setDownloading(false);
           console.log("LOADING");
           break;
-        case "RESULT":
+        case MessageTypes.RESULT:
           setOutput(e.data.results);
-          console.log(e.data.results);
+          console.log("Results:", e.data.results);
           break;
-        case "INFERENCE_DONE":
+        case MessageTypes.INFERENCE_DONE:
           setFinished(true);
-          console.log("DONE");
+          setLoading(false);
+          console.log("TRANSCRIPTION DONE");
           break;
       }
     };
 
     worker.current.addEventListener("message", onMessageReceived);
 
-    return () =>
-      worker.current.removeEventListener("message", onMessageReceived);
-  });
+    return () => {
+      if (worker.current) {
+        worker.current.removeEventListener("message", onMessageReceived);
+      }
+    };
+  }, []);
 
   async function readAudioFrom(file) {
     const sampling_rate = 16000;
@@ -75,16 +84,24 @@ function App() {
       return;
     }
 
-    let audio = await readAudioFrom(file ? file : audioStream);
-    const model_name = `openai/whisper-tiny.en`;
+    try {
+      setLoading(true);
+      setOutput(null);
+      setFinished(false);
 
-    worker.current.postMessage({
-      type: MessageTypes.INFERENCE_REQUEST,
-      audio,
-      // !!!!!! Possible need to comment "model_name"
-      // model_name,
-      language,
-    });
+      let audio = await readAudioFrom(file ? file : audioStream);
+
+      console.log("Sending transcription request with language:", language);
+
+      worker.current.postMessage({
+        type: MessageTypes.INFERENCE_REQUEST,
+        audio,
+        language,
+      });
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      setLoading(false);
+    }
   }
 
   return (
