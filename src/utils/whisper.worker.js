@@ -10,16 +10,24 @@ class MyTranscriptionPipeline {
     const selectedModel =
       language === "en" ? "Xenova/whisper-tiny.en" : "Xenova/whisper-tiny";
 
+    // force reload if model changed or if switching to a different language
     if (this.instance === null || this.model !== selectedModel) {
+      console.log(
+        `Switching from ${this.model} to ${selectedModel} for language: ${language}`
+      );
+
+      // clear the previous instance to force reload
+      this.instance = null;
       this.model = selectedModel;
-      console.log(`Loading model: ${selectedModel}`);
 
       try {
         this.instance = await pipeline(this.task, this.model, {
           progress_callback,
           dtype: "fp32",
         });
-        console.log(`Model ${selectedModel} loaded successfully`);
+        console.log(
+          `Model ${selectedModel} loaded successfully for language: ${language}`
+        );
       } catch (error) {
         console.error(`Failed to load model ${selectedModel}:`, error);
         throw error;
@@ -67,6 +75,7 @@ async function transcribe(audio, language = "en") {
       stride_length_s
     );
 
+    //base pipeline options
     const pipelineOptions = {
       top_k: 0,
       do_sample: false,
@@ -78,9 +87,18 @@ async function transcribe(audio, language = "en") {
       chunk_callback: generationTracker.chunkCallback.bind(generationTracker),
     };
 
+    //language-specific options
     if (language === "ru") {
       pipelineOptions.language = "russian";
-      pipelineOptions.forced_decoder_ids = null;
+      pipelineOptions.task = "transcribe";
+      // Force the model to use Russian
+      pipelineOptions.forced_decoder_ids = [
+        [1, 50259],
+        [2, 50359],
+      ]; // Language token for Russian
+    } else if (language === "en") {
+      pipelineOptions.language = "english";
+      pipelineOptions.task = "transcribe";
     }
 
     console.log("Starting transcription with options:", pipelineOptions);
