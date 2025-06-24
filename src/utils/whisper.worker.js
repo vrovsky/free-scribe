@@ -7,16 +7,10 @@ class MyTranscriptionPipeline {
   static instance = null;
 
   static async getInstance(language = "en", progress_callback = null) {
-    const selectedModel =
-      language === "en" ? "Xenova/whisper-tiny.en" : "Xenova/whisper-tiny";
+    const selectedModel = "Xenova/whisper-tiny";
 
-    // force reload if model changed or if switching to a different language
     if (this.instance === null || this.model !== selectedModel) {
-      console.log(
-        `Switching from ${this.model} to ${selectedModel} for language: ${language}`
-      );
-
-      // clear the previous instance to force reload
+      console.log(`Loading model: ${selectedModel} for language: ${language}`);
       this.instance = null;
       this.model = selectedModel;
 
@@ -75,7 +69,7 @@ async function transcribe(audio, language = "en") {
       stride_length_s
     );
 
-    //base pipeline options
+    // Base pipeline options
     const pipelineOptions = {
       top_k: 0,
       do_sample: false,
@@ -87,17 +81,11 @@ async function transcribe(audio, language = "en") {
       chunk_callback: generationTracker.chunkCallback.bind(generationTracker),
     };
 
-    //language-specific options
     if (language === "ru") {
-      pipelineOptions.language = "russian";
+      pipelineOptions.language = "ru";
       pipelineOptions.task = "transcribe";
-      // Force the model to use Russian
-      pipelineOptions.forced_decoder_ids = [
-        [1, 50259],
-        [2, 50359],
-      ]; // Language token for Russian
     } else if (language === "en") {
-      pipelineOptions.language = "english";
+      pipelineOptions.language = "en";
       pipelineOptions.task = "transcribe";
     }
 
